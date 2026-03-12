@@ -27,25 +27,28 @@ async function scanTriggerEvents({ filters }) {
 
   const triggerList = trigger_types.length > 0
     ? trigger_types.join(", ")
-    : "Neuer CEO/Geschaeftsfuehrer, PE-Einstieg, Series B/C Funding, Internationalisierung, Neue Produktlinie, Verfehlte Umsatzziele, Wachsendes Vertriebsteam ohne Struktur";
+    : "Neuer CEO/Geschaeftsfuehrer, PE-Einstieg, Series A/B/C Funding, Internationalisierung, Neue Produktlinie, Verfehlte Umsatzziele, Wachsendes Vertriebsteam ohne Struktur";
 
   const prompt = `Du bist ein erfahrener AI-Vertriebsassistent spezialisiert auf die Akquise von Beratungs- und Interim-Mandaten im Bereich Vertriebsorganisation, Commercial Excellence und KI-gestuetzte Vertriebsoptimierung.
 
-Dein Auftraggeber unterstuetzt B2B-Unternehmen dabei, ihre Vertriebsorganisation zu strukturieren, optimieren oder fuer Wachstum zu skalieren. Er arbeitet als Berater, Interim Head of Sales oder Interim Head of Commercial.
+WICHTIG: Nutze die Web-Suche um ECHTE, aktuelle Trigger-Events und ECHTE Unternehmen zu finden. Keine fiktiven Firmen oder erfundenen Events!
 
-Typische Mandate:
-- Aufbau/Professionalisierung von Vertriebsorganisationen
-- Optimierung von Sales Funnels, Pipeline und Forecast
-- Steigerung von Abschlussquoten und Umsatz pro Kunde
-- Aufbau neuer Maerkte und Internationalisierung
-- Einsatz von KI und Automatisierung im Vertrieb
+Suche gezielt nach aktuellen Nachrichten und Events in den letzten 6 Monaten:
+- Fuehrungswechsel (neuer CEO, neuer Geschaeftsfuehrer, neuer CRO/Head of Sales)
+- Private Equity Transaktionen und Beteiligungen
+- Finanzierungsrunden (Series A, B, C)
+- Expansionen und Internationalisierung
+- Restrukturierungen und Transformationen
 
-AUFGABE: Generiere ${parseInt(count) || 8} realistische, fiktive aber plausible Trigger-Events fuer Unternehmen, die mit hoher Wahrscheinlichkeit Beratungs- oder Interim-Mandate im Vertrieb benoetigen.
+Kontext des Auftraggebers:
+Er unterstuetzt B2B-Unternehmen dabei, ihre Vertriebsorganisation zu strukturieren, optimieren oder fuer Wachstum zu skalieren. Er arbeitet als Berater, Interim Head of Sales oder Interim Head of Commercial.
+
+AUFGABE: Finde ${parseInt(count) || 8} echte, aktuelle Trigger-Events.
 
 Filter:
 - Trigger-Typen: ${triggerList}
 - Branchen: ${industries || "Maschinenbau, Bauindustrie, Industrieprodukte, Metallverarbeitung, B2B Software, Medizintechnik"}
-- Region: ${region || "DACH-Raum"}
+- Region: ${region || "DACH-Raum (Deutschland, Oesterreich, Schweiz)"}
 - PE-Fokus: ${pe_focus ? "Ja - priorisiere PE-Portfolio-Unternehmen" : "Gemischt (Familienunternehmen + PE-Portfolio)"}
 
 Zielunternehmen:
@@ -53,23 +56,28 @@ Zielunternehmen:
 - Mitarbeiter: 50-1000
 - B2B mit erklaerungsbeduerftigem Produkt oder Dienstleistung
 
-Fuer jedes Trigger-Event erstelle:
-1. Firmenname (realistisch klingend)
+Suche im Web nach:
+- Pressemitteilungen zu Fuehrungswechseln
+- PE-Deal-News (z.B. von PE-Magazine, Unternehmeredition, Finance-Magazin, Deutsche-Startups)
+- Funding-Announcements
+- Expansions-Nachrichten
+- Handelsblatt, WirtschaftsWoche, Manager-Magazin Meldungen
+
+Fuer jedes echte Trigger-Event erstelle:
+1. Echter Firmenname
 2. Branche
-3. Standort (Stadt, Bundesland)
-4. Umsatz (Mio EUR, geschaetzt)
-5. Mitarbeiterzahl (geschaetzt)
-6. Eigentuemer (Familienunternehmen, PE-Portfolio von [Name], oder Boersennotiert)
-7. Trigger-Event (was ist passiert)
-8. Trigger-Typ (einer von: neuer_ceo, pe_einstieg, funding, internationalisierung, neue_produktlinie, umsatzziele_verfehlt, vertrieb_wachstum, sonstiges)
-9. Trigger-Datum (realistisches Datum der letzten 3 Monate)
-10. Warum ist das ein guter Lead (2-3 Saetze: Bezug zum Trigger und warum Vertriebsberatung hier relevant ist)
+3. Standort
+4. Umsatz (Mio EUR - aus Quellen oder geschaetzt)
+5. Mitarbeiterzahl (aus Quellen oder geschaetzt)
+6. Eigentuemer (Familienunternehmen, PE-Portfolio von [echter PE-Name], Boersennotiert)
+7. Was genau ist passiert (echtes Event mit Details)
+8. Trigger-Typ: neuer_ceo, pe_einstieg, funding, internationalisierung, neue_produktlinie, umsatzziele_verfehlt, vertrieb_wachstum, sonstiges
+9. Datum des Events
+10. Warum ist das ein guter Lead (2-3 Saetze)
 11. Prioritaet: high, medium oder low
-    - High: PE-Portfolio + Trigger, Neuer CEO, Vertriebsteam >10 ohne Struktur
-    - Medium: Wachsender Mittelstand ohne Commercial Leader
-    - Low: Kleine Firmen, reine Konsumentenprodukte
-12. Empfohlener Ansprechpartner (Name, Position - typisch: CEO, GF, Head of Sales, CRO, Operating Partner)
-13. Empfohlene LinkedIn-Nachricht (2-3 Saetze, personalisiert auf den Trigger)
+12. Ansprechpartner (echter Name wenn verfuegbar)
+13. Kurze LinkedIn-Nachricht (2-3 Saetze, personalisiert auf den echten Trigger)
+14. Quell-URL wo du die Information gefunden hast
 
 Antworte ausschliesslich im JSON-Format:
 {
@@ -88,20 +96,25 @@ Antworte ausschliesslich im JSON-Format:
       "priority": "high|medium|low",
       "contact_name": "...",
       "contact_position": "...",
-      "linkedin_message": "..."
+      "linkedin_message": "...",
+      "source_url": "..."
     }
   ]
 }`;
 
-  const completion = await getOpenAI().chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [{ role: "user", content: prompt }],
-    response_format: { type: "json_object" },
-    temperature: 0.7,
+  const response = await getOpenAI().responses.create({
+    model: "gpt-4o",
+    tools: [{ type: "web_search_preview" }],
+    input: prompt,
   });
 
-  const content = completion.choices[0].message.content;
-  const parsed = JSON.parse(content);
+  const text = response.output_text;
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    return NextResponse.json({ error: "Konnte keine Ergebnisse parsen" }, { status: 500 });
+  }
+
+  const parsed = JSON.parse(jsonMatch[0]);
   const events = parsed.trigger_events || parsed.events || parsed;
 
   return NextResponse.json({
@@ -110,7 +123,7 @@ Antworte ausschliesslich im JSON-Format:
 }
 
 async function generateTriggerOutreach({ trigger, channel, tone }) {
-  const prompt = `Du bist ein erfahrener Vertriebsberater. Erstelle eine personalisierte ${channel === "email" ? "E-Mail" : channel === "linkedin" ? "LinkedIn-Nachricht" : "Telefonleitfaden"} fuer folgendes Unternehmen.
+  const prompt = `Du bist ein erfahrener Vertriebsberater. Erstelle eine personalisierte ${channel === "email" ? "E-Mail" : channel === "linkedin" ? "LinkedIn-Nachricht" : "Telefonleitfaden"} fuer folgendes echtes Unternehmen.
 
 Ton: ${tone === "formal" ? "Formell/Professionell" : tone === "friendly" ? "Freundlich/Persoenlich" : "Direkt/Auf den Punkt"}
 
@@ -127,7 +140,7 @@ Kontext: Der Absender ist ein erfahrener Vertriebsberater und Interim Manager, d
 - Internationalisierung und neue Maerkte
 - KI-gestuetzte Vertriebsoptimierung
 
-Die Nachricht soll direkt auf den Trigger-Event Bezug nehmen und einen konkreten Mehrwert aufzeigen.
+Die Nachricht soll direkt auf den echten Trigger-Event Bezug nehmen und einen konkreten Mehrwert aufzeigen.
 
 Antworte im JSON-Format:
 {

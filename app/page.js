@@ -19,7 +19,7 @@ const STATUS_COLORS = {
 const TRIGGER_TYPES = [
   { value: "neuer_ceo", label: "Neuer CEO / GF" },
   { value: "pe_einstieg", label: "PE-Einstieg" },
-  { value: "funding", label: "Series B/C Funding" },
+  { value: "funding", label: "Series A/B/C Funding" },
   { value: "internationalisierung", label: "Internationalisierung" },
   { value: "neue_produktlinie", label: "Neue Produktlinie" },
   { value: "umsatzziele_verfehlt", label: "Verfehlte Umsatzziele" },
@@ -481,7 +481,7 @@ export default function Dashboard() {
                   </h2>
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-md">
                     <span className="text-xs text-amber-800 font-medium">
-                      Hinweis: Alle Daten (Umsatz, Mitarbeiter, etc.) sind KI-generierte Schaetzungen, keine verifizierten Quellen.
+                      Daten basieren auf KI-Web-Recherche. Umsatz und Mitarbeiter koennen Schaetzungen sein. Quell-Links pruefen.
                     </span>
                   </div>
                 </div>
@@ -625,7 +625,7 @@ export default function Dashboard() {
                   </h2>
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-md">
                     <span className="text-xs text-amber-800 font-medium">
-                      KI-generierte Szenarien zur Veranschaulichung. Keine verifizierten Echtzeit-Daten.
+                      Echte Trigger-Events via KI-Web-Recherche. Details und Quell-Links pruefen.
                     </span>
                   </div>
                 </div>
@@ -999,6 +999,13 @@ function LeadCard({ lead, onSave, onAnalyze, saving }) {
             <span className="font-medium">Kontakt:</span> {lead.contact_name},{" "}
             {lead.contact_position}
           </p>
+          {lead.source_url && (
+            <p className="text-xs mt-1">
+              <a href={lead.source_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                Quelle anzeigen
+              </a>
+            </p>
+          )}
         </div>
         <div className="flex gap-2 ml-4">
           <button
@@ -1067,6 +1074,13 @@ function TriggerCard({ trigger, onOutreach, onSave, saving }) {
           <p className="text-xs text-black/70">
             <span className="font-medium">Ansprechpartner:</span> {trigger.contact_name}, {trigger.contact_position}
           </p>
+          {trigger.source_url && (
+            <p className="text-xs mt-1">
+              <a href={trigger.source_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                Quelle anzeigen
+              </a>
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-2 ml-4">

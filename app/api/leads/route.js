@@ -44,36 +44,63 @@ async function generateLeads({ criteria }) {
   const leadCount = Math.min(Math.max(parseInt(count) || 10, 1), 15);
 
   const prompt = `Du bist ein erfahrener M&A-Analyst spezialisiert auf den deutschen Mittelstand.
-Generiere ${leadCount} realistische, fiktive aber plausible Unternehmensprofile als potenzielle PE-Akquisitionsziele.
 
-Kriterien:
+WICHTIG: Nutze die Web-Suche um ECHTE, existierende Unternehmen zu finden. Keine fiktiven Firmen!
+
+Suche nach ${leadCount} echten Unternehmen als potenzielle PE-Akquisitionsziele mit folgenden Kriterien:
 - Branche: ${industry || "produzierendes Gewerbe, IT, Maschinenbau"}
-- Region: ${region || "DACH-Raum"}
+- Region: ${region || "DACH-Raum (Deutschland, Oesterreich, Schweiz)"}
 - Umsatz: ${revenue_min || "10"}M - ${revenue_max || "100"}M EUR
 - Mitarbeiter: ${employee_range || "50-500"}
 
-Für jedes Unternehmen gib zurück:
-1. Firmenname (realistisch klingend)
+Suche gezielt nach:
+- Echten Mittelstandsunternehmen in der angegebenen Branche und Region
+- Unternehmen die auf ihren Webseiten oder in Handelsregister-Eintraegen auffindbar sind
+- B2B-Unternehmen mit erklaerungsbeduerftigem Produkt
+
+Fuer jedes Unternehmen gib zurueck:
+1. Echter Firmenname (wie er tatsaechlich heisst)
 2. Branche
 3. Standort (Stadt, Bundesland)
-4. Geschätzter Jahresumsatz in Mio EUR
-5. Mitarbeiterzahl
-6. Kurzbeschreibung (2-3 Sätze über Geschäftsmodell und Stärken)
-7. PE-Attraktivitäts-Score (1-10) mit Begründung
-8. Empfohlener Ansprechpartner (Name, Position)
+4. Geschaetzter Jahresumsatz in Mio EUR (basierend auf verfuegbaren Informationen, markiere als Schaetzung wenn nicht verifiziert)
+5. Mitarbeiterzahl (basierend auf verfuegbaren Informationen)
+6. Kurzbeschreibung (2-3 Saetze ueber echtes Geschaeftsmodell)
+7. PE-Attraktivitaets-Score (1-10) mit Begruendung
+8. Empfohlener Ansprechpartner (echter Name wenn verfuegbar, sonst typische Position)
+9. Quelle/URL wo du die Firma gefunden hast
 
-Antworte ausschließlich im JSON-Format als Array von Objekten mit den Feldern:
-company_name, industry, location, revenue_mio, employees, description, pe_score, pe_reasoning, contact_name, contact_position`;
+Antworte ausschliesslich im JSON-Format:
+{
+  "leads": [
+    {
+      "company_name": "...",
+      "industry": "...",
+      "location": "...",
+      "revenue_mio": 0,
+      "employees": 0,
+      "description": "...",
+      "pe_score": 0,
+      "pe_reasoning": "...",
+      "contact_name": "...",
+      "contact_position": "...",
+      "source_url": "..."
+    }
+  ]
+}`;
 
-  const completion = await getOpenAI().chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [{ role: "user", content: prompt }],
-    response_format: { type: "json_object" },
-    temperature: 0.8,
+  const response = await getOpenAI().responses.create({
+    model: "gpt-4o",
+    tools: [{ type: "web_search_preview" }],
+    input: prompt,
   });
 
-  const content = completion.choices[0].message.content;
-  const parsed = JSON.parse(content);
+  const text = response.output_text;
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    return NextResponse.json({ error: "Konnte keine Ergebnisse parsen" }, { status: 500 });
+  }
+
+  const parsed = JSON.parse(jsonMatch[0]);
   const leads = parsed.leads || parsed.companies || parsed;
 
   return NextResponse.json({ leads: Array.isArray(leads) ? leads : [leads] });
