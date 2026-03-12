@@ -33,7 +33,7 @@ async function scanTriggerEvents({ filters }) {
 
 WICHTIG: Nutze die Web-Suche um ECHTE, aktuelle Trigger-Events und ECHTE Unternehmen zu finden. Keine fiktiven Firmen oder erfundenen Events!
 
-Suche gezielt nach aktuellen Nachrichten und Events in den letzten 6 Monaten:
+Suche gezielt nach aktuellen Nachrichten und Events in den letzten 3 Monaten (seit Dezember 2025):
 - Fuehrungswechsel (neuer CEO, neuer Geschaeftsfuehrer, neuer CRO/Head of Sales)
 - Private Equity Transaktionen und Beteiligungen
 - Finanzierungsrunden (Series A, B, C)
