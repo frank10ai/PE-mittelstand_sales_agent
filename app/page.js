@@ -16,6 +16,50 @@ const STATUS_COLORS = {
   abgelehnt: "bg-red-100 text-red-800",
 };
 
+const TRIGGER_TYPES = [
+  { value: "neuer_ceo", label: "Neuer CEO / GF" },
+  { value: "pe_einstieg", label: "PE-Einstieg" },
+  { value: "funding", label: "Series B/C Funding" },
+  { value: "internationalisierung", label: "Internationalisierung" },
+  { value: "neue_produktlinie", label: "Neue Produktlinie" },
+  { value: "umsatzziele_verfehlt", label: "Verfehlte Umsatzziele" },
+  { value: "vertrieb_wachstum", label: "Vertriebsteam-Wachstum" },
+];
+
+const TRIGGER_TYPE_LABELS = {
+  neuer_ceo: "Neuer CEO",
+  pe_einstieg: "PE-Einstieg",
+  funding: "Funding",
+  internationalisierung: "Internationalisierung",
+  neue_produktlinie: "Neue Produktlinie",
+  umsatzziele_verfehlt: "Umsatzziele verfehlt",
+  vertrieb_wachstum: "Vertrieb wachst",
+  sonstiges: "Sonstiges",
+};
+
+const TRIGGER_TYPE_COLORS = {
+  neuer_ceo: "bg-purple-100 text-purple-800",
+  pe_einstieg: "bg-indigo-100 text-indigo-800",
+  funding: "bg-emerald-100 text-emerald-800",
+  internationalisierung: "bg-cyan-100 text-cyan-800",
+  neue_produktlinie: "bg-orange-100 text-orange-800",
+  umsatzziele_verfehlt: "bg-red-100 text-red-800",
+  vertrieb_wachstum: "bg-amber-100 text-amber-800",
+  sonstiges: "bg-gray-100 text-gray-800",
+};
+
+const PRIORITY_COLORS = {
+  high: "bg-red-600 text-white",
+  medium: "bg-yellow-500 text-white",
+  low: "bg-gray-400 text-white",
+};
+
+const PRIORITY_LABELS = {
+  high: "High Priority",
+  medium: "Medium",
+  low: "Low",
+};
+
 export default function Dashboard() {
   const [leads, setLeads] = useState([]);
   const [generatedLeads, setGeneratedLeads] = useState([]);
@@ -38,6 +82,22 @@ export default function Dashboard() {
     revenue_max: "100",
     employee_range: "50-500",
     count: "10",
+  });
+
+  // Trigger Events state
+  const [triggerEvents, setTriggerEvents] = useState([]);
+  const [triggerLoading, setTriggerLoading] = useState(false);
+  const [selectedTrigger, setSelectedTrigger] = useState(null);
+  const [triggerOutreach, setTriggerOutreach] = useState(null);
+  const [triggerOutreachLoading, setTriggerOutreachLoading] = useState(false);
+  const [triggerOutreachChannel, setTriggerOutreachChannel] = useState("linkedin");
+  const [triggerOutreachTone, setTriggerOutreachTone] = useState("friendly");
+  const [triggerFilters, setTriggerFilters] = useState({
+    trigger_types: [],
+    industries: "",
+    region: "",
+    pe_focus: false,
+    count: "8",
   });
 
   useEffect(() => {
@@ -88,6 +148,46 @@ export default function Dashboard() {
           prev.filter((l) => l.company_name !== lead.company_name)
         );
         setSaveSuccess(`"${lead.company_name}" wurde in die Pipeline gespeichert.`);
+        setTimeout(() => setSaveSuccess(null), 4000);
+      } else {
+        setSaveError(`Fehler beim Speichern: ${data.error || "Unbekannter Fehler"}`);
+        setTimeout(() => setSaveError(null), 5000);
+      }
+    } catch (err) {
+      setSaveError(`Fehler beim Speichern: ${err.message}`);
+      setTimeout(() => setSaveError(null), 5000);
+    } finally {
+      setSavingLead(null);
+    }
+  }
+
+  async function handleSaveTriggerAsLead(trigger) {
+    setSavingLead(trigger.company_name);
+    setSaveError(null);
+    setSaveSuccess(null);
+    try {
+      const res = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "save",
+          lead: {
+            company_name: trigger.company_name,
+            industry: trigger.industry,
+            location: trigger.location,
+            revenue_mio: trigger.revenue_mio,
+            employees: trigger.employees,
+            description: `${trigger.trigger_event} | ${trigger.lead_reasoning}`,
+            pe_score: trigger.priority === "high" ? 9 : trigger.priority === "medium" ? 7 : 5,
+            pe_reasoning: `Trigger: ${trigger.trigger_event}. Eigentuemer: ${trigger.ownership}`,
+            contact_name: trigger.contact_name,
+            contact_position: trigger.contact_position,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSaveSuccess(`"${trigger.company_name}" wurde in die Pipeline gespeichert.`);
         setTimeout(() => setSaveSuccess(null), 4000);
       } else {
         setSaveError(`Fehler beim Speichern: ${data.error || "Unbekannter Fehler"}`);
@@ -162,8 +262,60 @@ export default function Dashboard() {
       await fetch(`/api/leads?id=${id}`, { method: "DELETE" });
       fetchLeads();
     } catch (err) {
-      console.error("Fehler beim Löschen:", err);
+      console.error("Fehler beim Loeschen:", err);
     }
+  }
+
+  // Trigger Events functions
+  async function handleScanTriggers() {
+    setTriggerLoading(true);
+    setTriggerEvents([]);
+    try {
+      const res = await fetch("/api/triggers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "scan", filters: triggerFilters }),
+      });
+      const data = await res.json();
+      if (data.trigger_events) setTriggerEvents(data.trigger_events);
+    } catch (err) {
+      console.error("Fehler beim Trigger-Scan:", err);
+    } finally {
+      setTriggerLoading(false);
+    }
+  }
+
+  async function handleTriggerOutreach(trigger) {
+    setSelectedTrigger(trigger);
+    setTriggerOutreach(null);
+    setTriggerOutreachLoading(true);
+    try {
+      const res = await fetch("/api/triggers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "outreach",
+          trigger,
+          channel: triggerOutreachChannel,
+          tone: triggerOutreachTone,
+        }),
+      });
+      const data = await res.json();
+      setTriggerOutreach(data);
+    } catch (err) {
+      console.error("Fehler bei Trigger-Outreach:", err);
+    } finally {
+      setTriggerOutreachLoading(false);
+    }
+  }
+
+  function toggleTriggerType(type) {
+    setTriggerFilters((prev) => ({
+      ...prev,
+      trigger_types: prev.trigger_types.includes(type)
+        ? prev.trigger_types.filter((t) => t !== type)
+        : [...prev.trigger_types, type],
+    }));
   }
 
   return (
@@ -176,12 +328,13 @@ export default function Dashboard() {
               PE Mittelstand Sales Agent
             </h1>
             <p className="text-sm text-black">
-              KI-gestutzte Lead-Generierung fur Private Equity
+              KI-gestuetzte Lead-Generierung fuer Private Equity
             </p>
           </div>
           <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
             {[
               { key: "generate", label: "Lead-Generierung" },
+              { key: "triggers", label: "Trigger Events" },
               { key: "pipeline", label: "Pipeline" },
             ].map((tab) => (
               <button
@@ -213,9 +366,9 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* ===== LEAD-GENERIERUNG TAB ===== */}
         {activeTab === "generate" && (
           <div className="space-y-6">
-            {/* Criteria Form */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-black mb-4">
                 Suchkriterien
@@ -320,7 +473,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Generated Leads */}
             {generatedLeads.length > 0 && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -329,7 +481,7 @@ export default function Dashboard() {
                   </h2>
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-md">
                     <span className="text-xs text-amber-800 font-medium">
-                      Hinweis: Alle Daten (Umsatz, Mitarbeiter, etc.) sind KI-generierte Schatzungen, keine verifizierten Quellen.
+                      Hinweis: Alle Daten (Umsatz, Mitarbeiter, etc.) sind KI-generierte Schaetzungen, keine verifizierten Quellen.
                     </span>
                   </div>
                 </div>
@@ -358,6 +510,154 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* ===== TRIGGER EVENTS TAB ===== */}
+        {activeTab === "triggers" && (
+          <div className="space-y-6">
+            {/* Trigger Filter Form */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-black mb-1">
+                Trigger Events Scanner
+              </h2>
+              <p className="text-sm text-black/60 mb-4">
+                Identifiziere Unternehmen mit aktuellen Trigger-Events, die auf Bedarf fuer Vertriebsberatung oder Interim-Management hindeuten.
+              </p>
+
+              {/* Trigger Type Chips */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-black mb-2">
+                  Trigger-Typen (optional - leer = alle)
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {TRIGGER_TYPES.map((type) => (
+                    <button
+                      key={type.value}
+                      onClick={() => toggleTriggerType(type.value)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+                        triggerFilters.trigger_types.includes(type.value)
+                          ? "bg-blue-600 text-white border-blue-600"
+                          : "bg-white text-black border-gray-300 hover:border-blue-400"
+                      }`}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1">
+                    Branchen
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="z.B. Maschinenbau, B2B Software"
+                    value={triggerFilters.industries}
+                    onChange={(e) =>
+                      setTriggerFilters({ ...triggerFilters, industries: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1">
+                    Region
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="z.B. DACH, Bayern"
+                    value={triggerFilters.region}
+                    onChange={(e) =>
+                      setTriggerFilters({ ...triggerFilters, region: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1">
+                    Anzahl Events
+                  </label>
+                  <select
+                    value={triggerFilters.count}
+                    onChange={(e) =>
+                      setTriggerFilters({ ...triggerFilters, count: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="5">5 Events</option>
+                    <option value="8">8 Events</option>
+                    <option value="12">12 Events</option>
+                    <option value="15">15 Events</option>
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <label className="flex items-center gap-2 px-3 py-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={triggerFilters.pe_focus}
+                      onChange={(e) =>
+                        setTriggerFilters({ ...triggerFilters, pe_focus: e.target.checked })
+                      }
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-black font-medium">Nur PE-Portfolio</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <button
+                  onClick={handleScanTriggers}
+                  disabled={triggerLoading}
+                  className="px-6 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {triggerLoading ? "Scanne Trigger Events..." : "Trigger Events scannen"}
+                </button>
+              </div>
+            </div>
+
+            {/* Trigger Results */}
+            {triggerEvents.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-black">
+                    Gefundene Trigger Events ({triggerEvents.length})
+                  </h2>
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-md">
+                    <span className="text-xs text-amber-800 font-medium">
+                      KI-generierte Szenarien zur Veranschaulichung. Keine verifizierten Echtzeit-Daten.
+                    </span>
+                  </div>
+                </div>
+                {triggerEvents.map((trigger, idx) => (
+                  <TriggerCard
+                    key={idx}
+                    trigger={trigger}
+                    onOutreach={() => {
+                      setSelectedTrigger(trigger);
+                      setTriggerOutreach(null);
+                    }}
+                    onSave={() => handleSaveTriggerAsLead(trigger)}
+                    saving={savingLead === trigger.company_name}
+                  />
+                ))}
+              </div>
+            )}
+
+            {triggerLoading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="inline-block w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mb-3" />
+                  <p className="text-sm text-black">
+                    KI scannt nach Trigger Events...
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ===== PIPELINE TAB ===== */}
         {activeTab === "pipeline" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -393,7 +693,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Analysis & Outreach Panel */}
+        {/* ===== ANALYSIS MODAL ===== */}
         {selectedLead && (
           <div className="fixed inset-0 bg-black/40 flex items-start justify-center pt-10 z-50 overflow-y-auto">
             <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 mb-10">
@@ -414,7 +714,6 @@ export default function Dashboard() {
               </div>
 
               <div className="p-6 space-y-6">
-                {/* Analysis */}
                 {analyzing && (
                   <div className="flex items-center gap-3 text-sm text-black">
                     <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -450,26 +749,10 @@ export default function Dashboard() {
                     {analysis.swot && (
                       <div className="grid grid-cols-2 gap-3">
                         {[
-                          {
-                            key: "strengths",
-                            label: "Starken",
-                            color: "green",
-                          },
-                          {
-                            key: "weaknesses",
-                            label: "Schwachen",
-                            color: "red",
-                          },
-                          {
-                            key: "opportunities",
-                            label: "Chancen",
-                            color: "blue",
-                          },
-                          {
-                            key: "threats",
-                            label: "Risiken",
-                            color: "orange",
-                          },
+                          { key: "strengths", label: "Staerken", color: "green" },
+                          { key: "weaknesses", label: "Schwaechen", color: "red" },
+                          { key: "opportunities", label: "Chancen", color: "blue" },
+                          { key: "threats", label: "Risiken", color: "orange" },
                         ].map(({ key, label, color }) => (
                           <div
                             key={key}
@@ -507,7 +790,6 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {/* Outreach Section */}
                 <div className="border-t border-gray-200 pt-4">
                   <h4 className="text-sm font-semibold text-black mb-3">
                     Outreach generieren
@@ -544,36 +826,133 @@ export default function Dashboard() {
                     <div className="bg-gray-50 rounded-md p-4 space-y-3">
                       {outreach.subject && (
                         <div>
-                          <span className="text-xs font-medium text-black/60">
-                            Betreff:
-                          </span>
-                          <p className="text-sm text-black">
-                            {outreach.subject}
-                          </p>
+                          <span className="text-xs font-medium text-black/60">Betreff:</span>
+                          <p className="text-sm text-black">{outreach.subject}</p>
                         </div>
                       )}
                       <div>
-                        <span className="text-xs font-medium text-black/60">
-                          Nachricht:
-                        </span>
-                        <p className="text-sm text-black whitespace-pre-wrap">
-                          {outreach.message}
-                        </p>
+                        <span className="text-xs font-medium text-black/60">Nachricht:</span>
+                        <p className="text-sm text-black whitespace-pre-wrap">{outreach.message}</p>
                       </div>
                       {outreach.follow_up_suggestion && (
                         <div>
-                          <span className="text-xs font-medium text-black/60">
-                            Follow-up:
-                          </span>
-                          <p className="text-sm text-black">
-                            {outreach.follow_up_suggestion}
-                          </p>
+                          <span className="text-xs font-medium text-black/60">Follow-up:</span>
+                          <p className="text-sm text-black">{outreach.follow_up_suggestion}</p>
                         </div>
                       )}
                       <button
-                        onClick={() =>
-                          navigator.clipboard.writeText(outreach.message)
-                        }
+                        onClick={() => navigator.clipboard.writeText(outreach.message)}
+                        className="px-3 py-1 text-xs text-black border border-gray-300 rounded-md hover:bg-gray-100"
+                      >
+                        Kopieren
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== TRIGGER OUTREACH MODAL ===== */}
+        {selectedTrigger && (
+          <div className="fixed inset-0 bg-black/40 flex items-start justify-center pt-10 z-50 overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 mb-10">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                <div>
+                  <h3 className="text-lg font-semibold text-black">
+                    Outreach: {selectedTrigger.company_name}
+                  </h3>
+                  <p className="text-xs text-black/60">
+                    Trigger: {selectedTrigger.trigger_event}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedTrigger(null);
+                    setTriggerOutreach(null);
+                  }}
+                  className="text-gray-400 hover:text-black text-xl leading-none"
+                >
+                  x
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {/* LinkedIn Quick Message */}
+                {selectedTrigger.linkedin_message && (
+                  <div className="bg-blue-50 rounded-md p-4">
+                    <h4 className="text-sm font-medium text-black mb-2">Schnelle LinkedIn-Nachricht</h4>
+                    <p className="text-sm text-black">{selectedTrigger.linkedin_message}</p>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(selectedTrigger.linkedin_message)}
+                      className="mt-2 px-3 py-1 text-xs text-black border border-blue-200 rounded-md hover:bg-blue-100"
+                    >
+                      Kopieren
+                    </button>
+                  </div>
+                )}
+
+                {/* Custom Outreach */}
+                <div className="border-t border-gray-200 pt-4">
+                  <h4 className="text-sm font-semibold text-black mb-3">
+                    Detailliertes Outreach generieren
+                  </h4>
+                  <div className="flex gap-3 mb-3">
+                    <select
+                      value={triggerOutreachChannel}
+                      onChange={(e) => setTriggerOutreachChannel(e.target.value)}
+                      className="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-black"
+                    >
+                      <option value="email">E-Mail</option>
+                      <option value="linkedin">LinkedIn</option>
+                      <option value="phone">Telefon</option>
+                    </select>
+                    <select
+                      value={triggerOutreachTone}
+                      onChange={(e) => setTriggerOutreachTone(e.target.value)}
+                      className="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-black"
+                    >
+                      <option value="formal">Formell</option>
+                      <option value="friendly">Freundlich</option>
+                      <option value="direct">Direkt</option>
+                    </select>
+                    <button
+                      onClick={() => handleTriggerOutreach(selectedTrigger)}
+                      disabled={triggerOutreachLoading}
+                      className="px-4 py-1.5 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 disabled:opacity-50"
+                    >
+                      {triggerOutreachLoading ? "Generiere..." : "Generieren"}
+                    </button>
+                  </div>
+
+                  {triggerOutreachLoading && (
+                    <div className="flex items-center gap-3 text-sm text-black py-3">
+                      <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                      Generiere personalisiertes Outreach...
+                    </div>
+                  )}
+
+                  {triggerOutreach && (
+                    <div className="bg-gray-50 rounded-md p-4 space-y-3">
+                      {triggerOutreach.subject && (
+                        <div>
+                          <span className="text-xs font-medium text-black/60">Betreff:</span>
+                          <p className="text-sm text-black">{triggerOutreach.subject}</p>
+                        </div>
+                      )}
+                      <div>
+                        <span className="text-xs font-medium text-black/60">Nachricht:</span>
+                        <p className="text-sm text-black whitespace-pre-wrap">{triggerOutreach.message}</p>
+                      </div>
+                      {triggerOutreach.follow_up_suggestion && (
+                        <div>
+                          <span className="text-xs font-medium text-black/60">Follow-up:</span>
+                          <p className="text-sm text-black">{triggerOutreach.follow_up_suggestion}</p>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => navigator.clipboard.writeText(triggerOutreach.message)}
                         className="px-3 py-1 text-xs text-black border border-gray-300 rounded-md hover:bg-gray-100"
                       >
                         Kopieren
@@ -589,6 +968,8 @@ export default function Dashboard() {
     </div>
   );
 }
+
+// ===== COMPONENTS =====
 
 function LeadCard({ lead, onSave, onAnalyze, saving }) {
   return (
@@ -606,12 +987,12 @@ function LeadCard({ lead, onSave, onAnalyze, saving }) {
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-black mb-2">
             <span>{lead.industry}</span>
             <span>{lead.location}</span>
-            <span>~{lead.revenue_mio} Mio EUR (Schatzung)</span>
-            <span>~{lead.employees} Mitarbeiter (Schatzung)</span>
+            <span>~{lead.revenue_mio} Mio EUR (Schaetzung)</span>
+            <span>~{lead.employees} Mitarbeiter (Schaetzung)</span>
           </div>
           <p className="text-sm text-black mb-2">{lead.description}</p>
           <p className="text-xs text-black/70">
-            <span className="font-medium">PE-Begrundung:</span>{" "}
+            <span className="font-medium">PE-Begruendung:</span>{" "}
             {lead.pe_reasoning}
           </p>
           <p className="text-xs text-black/70 mt-1">
@@ -632,6 +1013,75 @@ function LeadCard({ lead, onSave, onAnalyze, saving }) {
             className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
           >
             {saving ? "Speichern..." : "In Pipeline speichern"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TriggerCard({ trigger, onOutreach, onSave, saving }) {
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-5">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
+            <h3 className="text-base font-semibold text-black">
+              {trigger.company_name}
+            </h3>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                PRIORITY_COLORS[trigger.priority] || "bg-gray-400 text-white"
+              }`}
+            >
+              {PRIORITY_LABELS[trigger.priority] || trigger.priority}
+            </span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                TRIGGER_TYPE_COLORS[trigger.trigger_type] || "bg-gray-100 text-gray-800"
+              }`}
+            >
+              {TRIGGER_TYPE_LABELS[trigger.trigger_type] || trigger.trigger_type}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-black mb-2">
+            <span>{trigger.industry}</span>
+            <span>{trigger.location}</span>
+            <span>~{trigger.revenue_mio} Mio EUR</span>
+            <span>~{trigger.employees} MA</span>
+            <span className="font-medium">{trigger.ownership}</span>
+          </div>
+
+          <div className="bg-purple-50 rounded-md px-3 py-2 mb-2">
+            <p className="text-sm text-black">
+              <span className="font-semibold">Trigger:</span> {trigger.trigger_event}
+            </p>
+            {trigger.trigger_date && (
+              <p className="text-xs text-black/60 mt-0.5">Datum: {trigger.trigger_date}</p>
+            )}
+          </div>
+
+          <p className="text-sm text-black mb-2">{trigger.lead_reasoning}</p>
+
+          <p className="text-xs text-black/70">
+            <span className="font-medium">Ansprechpartner:</span> {trigger.contact_name}, {trigger.contact_position}
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2 ml-4">
+          <button
+            onClick={onOutreach}
+            className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700"
+          >
+            Outreach
+          </button>
+          <button
+            onClick={onSave}
+            disabled={saving}
+            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+          >
+            {saving ? "..." : "Pipeline"}
           </button>
         </div>
       </div>
@@ -664,8 +1114,8 @@ function PipelineCard({ lead, onStatusUpdate, onDelete, onAnalyze }) {
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-black mb-2">
             <span>{lead.industry}</span>
             <span>{lead.location}</span>
-            <span>~{lead.revenue_mio} Mio EUR (Schatzung)</span>
-            <span>~{lead.employees} Mitarbeiter (Schatzung)</span>
+            <span>~{lead.revenue_mio} Mio EUR (Schaetzung)</span>
+            <span>~{lead.employees} Mitarbeiter (Schaetzung)</span>
           </div>
           <p className="text-sm text-black">{lead.description}</p>
         </div>
@@ -691,7 +1141,7 @@ function PipelineCard({ lead, onStatusUpdate, onDelete, onAnalyze }) {
             onClick={() => onDelete(lead.id)}
             className="px-3 py-1 text-xs text-red-600 border border-red-200 rounded-md hover:bg-red-50"
           >
-            Loschen
+            Loeschen
           </button>
         </div>
       </div>
