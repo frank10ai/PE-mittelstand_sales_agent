@@ -29,12 +29,15 @@ export default function Dashboard() {
   const [analyzing, setAnalyzing] = useState(false);
   const [generatingOutreach, setGeneratingOutreach] = useState(false);
   const [savingLead, setSavingLead] = useState(null);
+  const [saveError, setSaveError] = useState(null);
+  const [saveSuccess, setSaveSuccess] = useState(null);
   const [criteria, setCriteria] = useState({
     industry: "",
     region: "",
     revenue_min: "10",
     revenue_max: "100",
     employee_range: "50-500",
+    count: "10",
   });
 
   useEffect(() => {
@@ -71,19 +74,28 @@ export default function Dashboard() {
 
   async function handleSaveLead(lead) {
     setSavingLead(lead.company_name);
+    setSaveError(null);
+    setSaveSuccess(null);
     try {
       const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "save", lead }),
       });
+      const data = await res.json();
       if (res.ok) {
         setGeneratedLeads((prev) =>
           prev.filter((l) => l.company_name !== lead.company_name)
         );
+        setSaveSuccess(`"${lead.company_name}" wurde in die Pipeline gespeichert.`);
+        setTimeout(() => setSaveSuccess(null), 4000);
+      } else {
+        setSaveError(`Fehler beim Speichern: ${data.error || "Unbekannter Fehler"}`);
+        setTimeout(() => setSaveError(null), 5000);
       }
     } catch (err) {
-      console.error("Fehler beim Speichern:", err);
+      setSaveError(`Fehler beim Speichern: ${err.message}`);
+      setTimeout(() => setSaveError(null), 5000);
     } finally {
       setSavingLead(null);
     }
@@ -160,11 +172,11 @@ export default function Dashboard() {
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-black">
               PE Mittelstand Sales Agent
             </h1>
-            <p className="text-sm text-gray-500">
-              KI-gestützte Lead-Generierung für Private Equity
+            <p className="text-sm text-black">
+              KI-gestutzte Lead-Generierung fur Private Equity
             </p>
           </div>
           <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
@@ -177,8 +189,8 @@ export default function Dashboard() {
                 onClick={() => setActiveTab(tab.key)}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === tab.key
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
+                    ? "bg-white text-black shadow-sm"
+                    : "text-black/70 hover:text-black"
                 }`}
               >
                 {tab.label}
@@ -189,16 +201,28 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Success/Error Banners */}
+        {saveSuccess && (
+          <div className="mb-4 px-4 py-3 bg-green-100 border border-green-300 text-green-900 rounded-md text-sm">
+            {saveSuccess}
+          </div>
+        )}
+        {saveError && (
+          <div className="mb-4 px-4 py-3 bg-red-100 border border-red-300 text-red-900 rounded-md text-sm">
+            {saveError}
+          </div>
+        )}
+
         {activeTab === "generate" && (
           <div className="space-y-6">
             {/* Criteria Form */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              <h2 className="text-lg font-semibold text-black mb-4">
                 Suchkriterien
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black mb-1">
                     Branche
                   </label>
                   <input
@@ -208,11 +232,11 @@ export default function Dashboard() {
                     onChange={(e) =>
                       setCriteria({ ...criteria, industry: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black mb-1">
                     Region
                   </label>
                   <input
@@ -222,11 +246,11 @@ export default function Dashboard() {
                     onChange={(e) =>
                       setCriteria({ ...criteria, region: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black mb-1">
                     Mitarbeiter
                   </label>
                   <input
@@ -239,11 +263,11 @@ export default function Dashboard() {
                         employee_range: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black mb-1">
                     Umsatz von (Mio EUR)
                   </label>
                   <input
@@ -252,11 +276,11 @@ export default function Dashboard() {
                     onChange={(e) =>
                       setCriteria({ ...criteria, revenue_min: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black mb-1">
                     Umsatz bis (Mio EUR)
                   </label>
                   <input
@@ -265,27 +289,50 @@ export default function Dashboard() {
                     onChange={(e) =>
                       setCriteria({ ...criteria, revenue_max: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                <div className="flex items-end">
-                  <button
-                    onClick={handleGenerate}
-                    disabled={loading}
-                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1">
+                    Anzahl Leads
+                  </label>
+                  <select
+                    value={criteria.count}
+                    onChange={(e) =>
+                      setCriteria({ ...criteria, count: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    {loading ? "Generiere Leads..." : "Leads generieren"}
-                  </button>
+                    <option value="5">5 Leads</option>
+                    <option value="10">10 Leads</option>
+                    <option value="15">15 Leads</option>
+                  </select>
                 </div>
+              </div>
+              <div className="mt-4">
+                <button
+                  onClick={handleGenerate}
+                  disabled={loading}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {loading ? "Generiere Leads..." : "Leads generieren"}
+                </button>
               </div>
             </div>
 
             {/* Generated Leads */}
             {generatedLeads.length > 0 && (
               <div className="space-y-4">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Generierte Leads ({generatedLeads.length})
-                </h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-black">
+                    Generierte Leads ({generatedLeads.length})
+                  </h2>
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-md">
+                    <span className="text-xs text-amber-800 font-medium">
+                      Hinweis: Alle Daten (Umsatz, Mitarbeiter, etc.) sind KI-generierte Schatzungen, keine verifizierten Quellen.
+                    </span>
+                  </div>
+                </div>
                 {generatedLeads.map((lead, idx) => (
                   <LeadCard
                     key={idx}
@@ -302,7 +349,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-center py-12">
                 <div className="text-center">
                   <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-3" />
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-black">
                     KI generiert Leads basierend auf deinen Kriterien...
                   </p>
                 </div>
@@ -314,12 +361,12 @@ export default function Dashboard() {
         {activeTab === "pipeline" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-black">
                 Lead Pipeline ({leads.length})
               </h2>
               <button
                 onClick={fetchLeads}
-                className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50"
+                className="px-3 py-1.5 text-sm text-black border border-gray-300 rounded-md hover:bg-gray-50"
               >
                 Aktualisieren
               </button>
@@ -327,7 +374,7 @@ export default function Dashboard() {
 
             {leads.length === 0 ? (
               <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-                <p className="text-gray-500">
+                <p className="text-black">
                   Noch keine Leads in der Pipeline. Generiere zuerst Leads und
                   speichere sie.
                 </p>
@@ -351,7 +398,7 @@ export default function Dashboard() {
           <div className="fixed inset-0 bg-black/40 flex items-start justify-center pt-10 z-50 overflow-y-auto">
             <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 mb-10">
               <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-black">
                   {selectedLead.company_name}
                 </h3>
                 <button
@@ -360,7 +407,7 @@ export default function Dashboard() {
                     setAnalysis(null);
                     setOutreach(null);
                   }}
-                  className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+                  className="text-gray-400 hover:text-black text-xl leading-none"
                 >
                   x
                 </button>
@@ -369,7 +416,7 @@ export default function Dashboard() {
               <div className="p-6 space-y-6">
                 {/* Analysis */}
                 {analyzing && (
-                  <div className="flex items-center gap-3 text-sm text-gray-500">
+                  <div className="flex items-center gap-3 text-sm text-black">
                     <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                     Analysiere Unternehmen...
                   </div>
@@ -391,12 +438,12 @@ export default function Dashboard() {
                         {analysis.recommendation?.charAt(0).toUpperCase() +
                           analysis.recommendation?.slice(1)}
                       </span>
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-black">
                         Bewertung: {analysis.valuation_range}
                       </span>
                     </div>
 
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-black">
                       {analysis.recommendation_reasoning}
                     </p>
 
@@ -405,12 +452,12 @@ export default function Dashboard() {
                         {[
                           {
                             key: "strengths",
-                            label: "Stärken",
+                            label: "Starken",
                             color: "green",
                           },
                           {
                             key: "weaknesses",
-                            label: "Schwächen",
+                            label: "Schwachen",
                             color: "red",
                           },
                           {
@@ -433,7 +480,7 @@ export default function Dashboard() {
                             >
                               {label}
                             </h5>
-                            <ul className="text-xs text-gray-700 space-y-1">
+                            <ul className="text-xs text-black space-y-1">
                               {analysis.swot[key]?.map((item, i) => (
                                 <li key={i}>- {item}</li>
                               ))}
@@ -445,10 +492,10 @@ export default function Dashboard() {
 
                     {analysis.due_diligence_focus && (
                       <div>
-                        <h5 className="text-sm font-medium text-gray-900 mb-1">
+                        <h5 className="text-sm font-medium text-black mb-1">
                           Due-Diligence-Schwerpunkte
                         </h5>
-                        <ul className="text-sm text-gray-700 space-y-1">
+                        <ul className="text-sm text-black space-y-1">
                           {analysis.due_diligence_focus.map((item, i) => (
                             <li key={i}>
                               {i + 1}. {item}
@@ -462,14 +509,14 @@ export default function Dashboard() {
 
                 {/* Outreach Section */}
                 <div className="border-t border-gray-200 pt-4">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                  <h4 className="text-sm font-semibold text-black mb-3">
                     Outreach generieren
                   </h4>
                   <div className="flex gap-3 mb-3">
                     <select
                       value={outreachChannel}
                       onChange={(e) => setOutreachChannel(e.target.value)}
-                      className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
+                      className="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-black"
                     >
                       <option value="email">E-Mail</option>
                       <option value="linkedin">LinkedIn</option>
@@ -478,7 +525,7 @@ export default function Dashboard() {
                     <select
                       value={outreachTone}
                       onChange={(e) => setOutreachTone(e.target.value)}
-                      className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
+                      className="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-black"
                     >
                       <option value="formal">Formell</option>
                       <option value="friendly">Freundlich</option>
@@ -497,28 +544,28 @@ export default function Dashboard() {
                     <div className="bg-gray-50 rounded-md p-4 space-y-3">
                       {outreach.subject && (
                         <div>
-                          <span className="text-xs font-medium text-gray-500">
+                          <span className="text-xs font-medium text-black/60">
                             Betreff:
                           </span>
-                          <p className="text-sm text-gray-900">
+                          <p className="text-sm text-black">
                             {outreach.subject}
                           </p>
                         </div>
                       )}
                       <div>
-                        <span className="text-xs font-medium text-gray-500">
+                        <span className="text-xs font-medium text-black/60">
                           Nachricht:
                         </span>
-                        <p className="text-sm text-gray-900 whitespace-pre-wrap">
+                        <p className="text-sm text-black whitespace-pre-wrap">
                           {outreach.message}
                         </p>
                       </div>
                       {outreach.follow_up_suggestion && (
                         <div>
-                          <span className="text-xs font-medium text-gray-500">
+                          <span className="text-xs font-medium text-black/60">
                             Follow-up:
                           </span>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-black">
                             {outreach.follow_up_suggestion}
                           </p>
                         </div>
@@ -527,7 +574,7 @@ export default function Dashboard() {
                         onClick={() =>
                           navigator.clipboard.writeText(outreach.message)
                         }
-                        className="px-3 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-100"
+                        className="px-3 py-1 text-xs text-black border border-gray-300 rounded-md hover:bg-gray-100"
                       >
                         Kopieren
                       </button>
@@ -549,25 +596,25 @@ function LeadCard({ lead, onSave, onAnalyze, saving }) {
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <h3 className="text-base font-semibold text-gray-900">
+            <h3 className="text-base font-semibold text-black">
               {lead.company_name}
             </h3>
             <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
               Score: {lead.pe_score}/10
             </span>
           </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600 mb-2">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-black mb-2">
             <span>{lead.industry}</span>
             <span>{lead.location}</span>
-            <span>{lead.revenue_mio} Mio EUR</span>
-            <span>{lead.employees} Mitarbeiter</span>
+            <span>~{lead.revenue_mio} Mio EUR (Schatzung)</span>
+            <span>~{lead.employees} Mitarbeiter (Schatzung)</span>
           </div>
-          <p className="text-sm text-gray-700 mb-2">{lead.description}</p>
-          <p className="text-xs text-gray-500">
-            <span className="font-medium">PE-Begründung:</span>{" "}
+          <p className="text-sm text-black mb-2">{lead.description}</p>
+          <p className="text-xs text-black/70">
+            <span className="font-medium">PE-Begrundung:</span>{" "}
             {lead.pe_reasoning}
           </p>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-black/70 mt-1">
             <span className="font-medium">Kontakt:</span> {lead.contact_name},{" "}
             {lead.contact_position}
           </p>
@@ -575,7 +622,7 @@ function LeadCard({ lead, onSave, onAnalyze, saving }) {
         <div className="flex gap-2 ml-4">
           <button
             onClick={onAnalyze}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+            className="px-3 py-1.5 text-sm text-black border border-gray-300 rounded-md hover:bg-gray-50"
           >
             Analysieren
           </button>
@@ -584,7 +631,7 @@ function LeadCard({ lead, onSave, onAnalyze, saving }) {
             disabled={saving}
             className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
           >
-            {saving ? "Speichern..." : "Speichern"}
+            {saving ? "Speichern..." : "In Pipeline speichern"}
           </button>
         </div>
       </div>
@@ -598,7 +645,7 @@ function PipelineCard({ lead, onStatusUpdate, onDelete, onAnalyze }) {
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <h3 className="text-base font-semibold text-gray-900">
+            <h3 className="text-base font-semibold text-black">
               {lead.company_name}
             </h3>
             <span
@@ -609,24 +656,24 @@ function PipelineCard({ lead, onStatusUpdate, onDelete, onAnalyze }) {
               {STATUS_LABELS[lead.status] || lead.status}
             </span>
             {lead.pe_score && (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-black/60">
                 Score: {lead.pe_score}/10
               </span>
             )}
           </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600 mb-2">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-black mb-2">
             <span>{lead.industry}</span>
             <span>{lead.location}</span>
-            <span>{lead.revenue_mio} Mio EUR</span>
-            <span>{lead.employees} Mitarbeiter</span>
+            <span>~{lead.revenue_mio} Mio EUR (Schatzung)</span>
+            <span>~{lead.employees} Mitarbeiter (Schatzung)</span>
           </div>
-          <p className="text-sm text-gray-700">{lead.description}</p>
+          <p className="text-sm text-black">{lead.description}</p>
         </div>
         <div className="flex flex-col gap-2 ml-4">
           <select
             value={lead.status}
             onChange={(e) => onStatusUpdate(lead.id, e.target.value)}
-            className="px-2 py-1 text-xs border border-gray-300 rounded-md"
+            className="px-2 py-1 text-xs text-black border border-gray-300 rounded-md"
           >
             {Object.entries(STATUS_LABELS).map(([val, label]) => (
               <option key={val} value={val}>
@@ -636,7 +683,7 @@ function PipelineCard({ lead, onStatusUpdate, onDelete, onAnalyze }) {
           </select>
           <button
             onClick={onAnalyze}
-            className="px-3 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-50"
+            className="px-3 py-1 text-xs text-black border border-gray-300 rounded-md hover:bg-gray-50"
           >
             Analysieren
           </button>
@@ -644,7 +691,7 @@ function PipelineCard({ lead, onStatusUpdate, onDelete, onAnalyze }) {
             onClick={() => onDelete(lead.id)}
             className="px-3 py-1 text-xs text-red-600 border border-red-200 rounded-md hover:bg-red-50"
           >
-            Löschen
+            Loschen
           </button>
         </div>
       </div>

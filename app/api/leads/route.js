@@ -40,10 +40,11 @@ export async function POST(request) {
 }
 
 async function generateLeads({ criteria }) {
-  const { industry, region, revenue_min, revenue_max, employee_range } = criteria || {};
+  const { industry, region, revenue_min, revenue_max, employee_range, count } = criteria || {};
+  const leadCount = Math.min(Math.max(parseInt(count) || 10, 1), 15);
 
   const prompt = `Du bist ein erfahrener M&A-Analyst spezialisiert auf den deutschen Mittelstand.
-Generiere 5 realistische, fiktive aber plausible Unternehmensprofile als potenzielle PE-Akquisitionsziele.
+Generiere ${leadCount} realistische, fiktive aber plausible Unternehmensprofile als potenzielle PE-Akquisitionsziele.
 
 Kriterien:
 - Branche: ${industry || "produzierendes Gewerbe, IT, Maschinenbau"}
